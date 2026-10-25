@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python backend
+backend/.venv/
+backend/**/__pycache__/
+backend/**/*.pyc
+.hf_cache/
+
+# bun gateway
+gateway/node_modules/
+gateway/bun.lockb
+

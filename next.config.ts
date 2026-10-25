@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  serverExternalPackages: ["@mediapipe/tasks-vision"],
   turbopack: {
     rules: {
       "*.css": {
@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+    ignoreIssue: [
+      {
+        path: "**/node_modules/@mediapipe/tasks-vision/**",
+        title: /Module not found/,
+      },
+    ],
   },
 };
 
