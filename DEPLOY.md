@@ -1,108 +1,96 @@
-# Deploy ASL Alphabet to your VPS (no domain)
+# Deploy from GitHub (no rsync / no domain)
 
-**Server:** `deploy@94.156.189.5`  
-**App name in PM2:** `asl-alphabet` (won’t touch `osonbotV3`)  
-**Port:** `3010` (localhost only)  
-**Public URL:** Cloudflare free tunnel → `https://….trycloudflare.com`
+**Repo:** https://github.com/devmuhammadaziz/sign.git  
+**VPS:** `deploy@94.156.189.5`  
+**Folder:** `/home/deploy/asl-alphabet`  
+**PM2 name:** `asl-alphabet` (does not touch `osonbotV3`)
 
-> Webcam APIs need **HTTPS**. Plain `http://IP:port` often blocks the camera in Chrome.
-
-Alphabet mode needs **no `.env`** — config is inside `ecosystem.config.cjs`.
+No `.env` needed for alphabet mode.
 
 ---
 
-## One-time from your Mac
-
-### 0) SSH works
-
-```bash
-ssh deploy@94.156.189.5
-# exit when done
-```
-
-### 1) Deploy app (install + build + PM2)
-
-On your Mac, in the project folder:
+## Option A — one command from your Mac
 
 ```bash
 cd ~/Desktop/codes/sign
+# push any local changes first
+git add -A && git commit -m "deploy" && git push origin main   # if you have new commits
+
 chmod +x scripts/deploy-vps.sh scripts/vps-tunnel.sh
 ./scripts/deploy-vps.sh
 ```
 
-Enter the VPS password when asked (rsync + ssh).
+Enter VPS password when asked. It will **clone or pull** from GitHub, build, and start PM2.
 
-### 2) Unique HTTPS URL (on the VPS)
+---
+
+## Option B — do everything on the VPS (clone yourself)
 
 ```bash
 ssh deploy@94.156.189.5
+```
+
+Then:
+
+```bash
+# first time only if git/node missing
+sudo apt-get update -y
+sudo apt-get install -y git
+# node/pm2 only if not already installed for osonbot
+
+cd ~
+git clone https://github.com/devmuhammadaziz/sign.git asl-alphabet
+cd asl-alphabet
+
+npm install
+npm run build
+
+# make sure cwd in ecosystem matches
+sed -i 's|cwd: ".*"|cwd: "/home/deploy/asl-alphabet"|' ecosystem.config.cjs
+
+pm2 delete asl-alphabet 2>/dev/null || true
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 ls
+```
+
+**Later updates:**
+
+```bash
+cd ~/asl-alphabet
+git pull origin main
+npm install
+npm run build
+pm2 restart asl-alphabet
+```
+
+---
+
+## Unique HTTPS URL (camera needs HTTPS)
+
+On the VPS:
+
+```bash
 cd ~/asl-alphabet
 bash scripts/vps-tunnel.sh
 pm2 logs asl-alphabet-tunnel --lines 40
 ```
 
-Copy the line like:
-
-```text
-https://random-words-here.trycloudflare.com
-```
-
-That is your **unique public URL**. Open it on your phone/laptop → Start camera.
-
-### 3) Keep both apps forever
+Copy `https://….trycloudflare.com` — that is your public link.
 
 ```bash
 pm2 save
-pm2 startup
-# run the command it prints (sudo …)
+pm2 startup   # run the sudo command it prints once
 ```
 
 ---
 
-## After code changes (redeploy)
+## If the repo is private
 
-On Mac:
+On the VPS, clone with a token:
 
 ```bash
-cd ~/Desktop/codes/sign
-./scripts/deploy-vps.sh
+git clone https://YOUR_GITHUB_TOKEN@github.com/devmuhammadaziz/sign.git asl-alphabet
 ```
 
-Tunnel keeps running; URL may change only if you restart the tunnel process.
-
----
-
-## Useful PM2 commands (on VPS)
-
-```bash
-pm2 ls
-pm2 logs asl-alphabet
-pm2 restart asl-alphabet
-pm2 logs asl-alphabet-tunnel
-```
-
-`osonbotV3` stays as-is.
-
----
-
-## Optional: IP only (no tunnel)
-
-If you only want a quick check (camera may fail):
-
-```bash
-# on VPS — temporarily bind public (edit ecosystem HOSTNAME to 0.0.0.0) OR:
-sudo ufw allow 3010/tcp   # if firewall
-```
-
-Then open `http://94.156.189.5:3010` — prefer the Cloudflare HTTPS link for real use.
-
----
-
-## What gets installed where
-
-| Path | What |
-|------|------|
-| `/home/deploy/asl-alphabet` | This Next.js app |
-| PM2 `asl-alphabet` | `next start` on `127.0.0.1:3010` |
-| PM2 `asl-alphabet-tunnel` | Cloudflare → unique HTTPS URL |
-| `/home/deploy/osonbotV3` | Untouched |
+Or add a deploy key. Public repos need nothing extra.
